@@ -160,6 +160,17 @@ CREATE TABLE IF NOT EXISTS videos (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE videos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    video_path VARCHAR(255) NOT NULL,
+    thumbnail_path VARCHAR(255),
+    views_count INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create video_likes table
 CREATE TABLE IF NOT EXISTS video_likes (
     id INT PRIMARY KEY AUTO_INCREMENT,

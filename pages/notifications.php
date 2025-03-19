@@ -133,8 +133,8 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <?php if ($notification['type'] === 'friend_request'): ?>
                             <div class="notification-content">
                                 <img src="<?php echo $notification['profile_picture'] ? '/Core-Learners/assets/images/profile/' . $notification['profile_picture'] : '/Core-Learners/assets/images/default-profile.png'; ?>" 
-                                     alt="<?php echo htmlspecialchars($notification['username']); ?>" 
-                                     class="profile-picture">
+                                    alt="<?php echo htmlspecialchars($notification['username']); ?>" 
+                                    class="profile-picture">
                                 <div class="notification-text">
                                     <p><strong><?php echo htmlspecialchars($notification['username']); ?></strong> sent you a friend request</p>
                                     <span class="notification-date"><?php echo date('M d, Y H:i', strtotime($notification['date'])); ?></span>
@@ -151,8 +151,8 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <?php elseif ($notification['type'] === 'friend_suggestion'): ?>
                             <div class="notification-content">
                                 <img src="<?php echo $notification['profile_picture'] ? '/Core-Learners/assets/images/profile/' . $notification['profile_picture'] : '/Core-Learners/assets/images/default-profile.png'; ?>" 
-                                     alt="<?php echo htmlspecialchars($notification['username']); ?>" 
-                                     class="profile-picture">
+                                    alt="<?php echo htmlspecialchars($notification['username']); ?>" 
+                                    class="profile-picture">
                                 <div class="notification-text">
                                     <p>Suggested friend: <strong><?php echo htmlspecialchars($notification['username']); ?></strong></p>
                                     <span class="notification-date"><?php echo date('M d, Y H:i', strtotime($notification['date'])); ?></span>

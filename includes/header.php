@@ -17,7 +17,7 @@ require_once __DIR__ . '/../config/database.php';
     <nav class="navbar">
         <div class="nav-left">
             <a href="/Core-Learners/index.php" class="logo">
-                <img src="/Core-Learners/assets/images/logo.png" alt="Core Learners Logo">
+                <img src="/Core-Learners/assets/images/logo1.webp" alt="Core Learners Logo">
             </a>
         </div>
         <div class="nav-middle">
@@ -33,7 +33,7 @@ require_once __DIR__ . '/../config/database.php';
         <div class="nav-right">
             <div class="profile-dropdown">
                 <a href="/Core-Learners/pages/profile.php" class="profile-link">
-                    <img src="<?php echo isset($_SESSION['user_id']) ? '/Core-Learners/assets/images/profile/' . $_SESSION['profile_picture'] : '/Core-Learners/assets/images/default-profile.png'; ?>" alt="Profile">
+                    <img src="<?php echo isset($_SESSION['user_id']) ?>" alt="Profile">
                 </a>
                 <div class="dropdown-content">
                     <a href="/Core-Learners/pages/profile.php">Profile</a>

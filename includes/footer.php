@@ -6,10 +6,10 @@
                 <h3>About Core Learners</h3>
                 <p>Empowering learners worldwide with quality education and collaborative learning experiences.</p>
                 <div class="social-links">
-                    <a href="#" class="social-link"><i class="fab fa-facebook"></i></a>
-                    <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
-                    <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
+                    <a href="https://www.facebook.com/profile.php?id=100058685671028" class="social-link"><i class="fab fa-facebook"></i></a>
+                    <a href="https://x.com/csit_ramanand" class="social-link"><i class="fab fa-twitter"></i></a>
+                    <a href="https://www.instagram.com/ramanand_mandal_001/" class="social-link"><i class="fab fa-instagram"></i></a>
+                    <a href="https://www.linkedin.com/in/ramanand-mandal-24a124324/" class="social-link"><i class="fab fa-linkedin"></i></a>
                 </div>
             </div>
 

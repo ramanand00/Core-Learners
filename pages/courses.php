@@ -4,54 +4,36 @@ require_once '../config/database.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    header('Location: /Core-Learners/pages/login.php');
+    header('Location: login.php');
     exit();
 }
 
-$user_id = $_SESSION['user_id'];
+// Get all courses with pagination
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 12;
+$offset = ($page - 1) * $limit;
 
-// Get search query
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$category = isset($_GET['category']) ? trim($_GET['category']) : '';
+// Get total courses count
+$stmt = $conn->query("SELECT COUNT(*) FROM courses");
+$total_courses = $stmt->fetchColumn();
+$total_pages = ceil($total_courses / $limit);
 
-// Build query
-$query = "
+// Get courses with category
+$stmt = $conn->prepare("
     SELECT c.*, 
            u.username as instructor_name,
-           u.profile_picture as instructor_picture,
-           COUNT(DISTINCT ce.id) as enrolled_count,
-           COUNT(DISTINCT cr.id) as review_count,
-           AVG(cr.rating) as average_rating
+           (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id) as enrolled_students,
+           (SELECT AVG(rating) FROM course_reviews WHERE course_id = c.id) as average_rating
     FROM courses c
     JOIN users u ON c.instructor_id = u.id
-    LEFT JOIN course_enrollments ce ON c.id = ce.course_id
-    LEFT JOIN course_reviews cr ON c.id = cr.course_id
-    WHERE 1=1
-";
-
-$params = [];
-
-if ($search) {
-    $query .= " AND (c.title LIKE ? OR c.description LIKE ?)";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-}
-
-if ($category) {
-    $query .= " AND c.category = ?";
-    $params[] = $category;
-}
-
-$query .= " GROUP BY c.id ORDER BY c.created_at DESC";
-
-// Get courses
-$stmt = $conn->prepare($query);
-$stmt->execute($params);
+    ORDER BY c.created_at DESC
+    LIMIT ? OFFSET ?
+");
+$stmt->execute([$limit, $offset]);
 $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get categories for filter
-$stmt = $conn->prepare("SELECT DISTINCT category FROM courses ORDER BY category");
-$stmt->execute();
+// Get course categories
+$stmt = $conn->query("SELECT DISTINCT category FROM courses WHERE category IS NOT NULL");
 $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
 
@@ -69,227 +51,84 @@ $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
     <div class="courses-container">
         <div class="courses-header">
-            <h2>Available Courses</h2>
-            <form class="search-form" method="GET">
-                <div class="search-group">
+            <h1>Available Courses</h1>
+            <div class="courses-search">
+                <form action="" method="GET" class="search-form">
                     <input type="text" name="search" placeholder="Search courses..." 
-                           value="<?php echo htmlspecialchars($search); ?>" class="form-control">
-                    <select name="category" class="form-control">
-                        <option value="">All Categories</option>
-                        <?php foreach ($categories as $cat): ?>
-                            <option value="<?php echo htmlspecialchars($cat); ?>" 
-                                    <?php echo $category === $cat ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($cat); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <button type="submit" class="btn btn-primary">Search</button>
-                </div>
-            </form>
+                           value="<?php echo htmlspecialchars($_GET['search'] ?? ''); ?>">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </form>
+            </div>
         </div>
 
-        <?php if (empty($courses)): ?>
+        <div class="courses-sidebar">
             <div class="card">
-                <p class="text-center">No courses found</p>
+                <div class="card-header">
+                    <h3>Categories</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="category-list">
+                        <li>
+                            <a href="?category=all" class="<?php echo !isset($_GET['category']) || $_GET['category'] === 'all' ? 'active' : ''; ?>">
+                                All Courses
+                            </a>
+                        </li>
+                        <?php foreach ($categories as $category): ?>
+                            <li>
+                                <a href="?category=<?php echo urlencode($category); ?>" 
+                                   class="<?php echo isset($_GET['category']) && $_GET['category'] === $category ? 'active' : ''; ?>">
+                                    <?php echo htmlspecialchars($category); ?>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
             </div>
-        <?php else: ?>
+        </div>
+
+        <div class="courses-main">
             <div class="courses-grid">
                 <?php foreach ($courses as $course): ?>
                     <div class="course-card">
-                        <div class="course-image">
-                            <?php if ($course['thumbnail']): ?>
-                                <img src="<?php echo htmlspecialchars($course['thumbnail']); ?>" 
-                                     alt="<?php echo htmlspecialchars($course['title']); ?>">
-                            <?php else: ?>
-                                <div class="course-image-placeholder">
-                                    <i class="fas fa-graduation-cap"></i>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="course-content">
+                        <img src="<?php echo $course['thumbnail'] ?? '../assets/images/default-course.jpg'; ?>" 
+                             alt="<?php echo htmlspecialchars($course['title']); ?>" 
+                             class="course-thumbnail">
+                        <div class="course-info">
                             <h3><?php echo htmlspecialchars($course['title']); ?></h3>
+                            <p class="course-description"><?php echo htmlspecialchars($course['description']); ?></p>
                             <div class="course-meta">
-                                <span class="instructor">
-                                    <img src="<?php echo $course['instructor_picture'] ? '/Core-Learners/assets/images/profile/' . $course['instructor_picture'] : '/Core-Learners/assets/images/default-profile.png'; ?>" 
-                                         alt="<?php echo htmlspecialchars($course['instructor_name']); ?>"
-                                         class="instructor-picture">
-                                    <?php echo htmlspecialchars($course['instructor_name']); ?>
-                                </span>
-                                <span class="category"><?php echo htmlspecialchars($course['category']); ?></span>
+                                <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($course['instructor_name']); ?></span>
+                                <span><i class="fas fa-users"></i> <?php echo $course['enrolled_students']; ?> students</span>
+                                <?php if ($course['average_rating']): ?>
+                                    <span><i class="fas fa-star"></i> <?php echo number_format($course['average_rating'], 1); ?></span>
+                                <?php endif; ?>
                             </div>
-                            <p class="course-description">
-                                <?php echo htmlspecialchars(substr($course['description'], 0, 100)) . '...'; ?>
-                            </p>
-                            <div class="course-stats">
-                                <span><i class="fas fa-users"></i> <?php echo $course['enrolled_count']; ?> enrolled</span>
-                                <span><i class="fas fa-star"></i> <?php echo number_format($course['average_rating'], 1); ?></span>
-                                <span><i class="fas fa-comments"></i> <?php echo $course['review_count']; ?> reviews</span>
-                            </div>
-                            <div class="course-footer">
-                                <span class="course-price">$<?php echo number_format($course['price'], 2); ?></span>
-                                <a href="/Core-Learners/pages/course.php?id=<?php echo $course['id']; ?>" 
-                                   class="btn btn-primary">View Course</a>
-                            </div>
+                            <?php if ($course['category']): ?>
+                                <span class="course-category"><?php echo htmlspecialchars($course['category']); ?></span>
+                            <?php endif; ?>
+                            <a href="course.php?id=<?php echo $course['id']; ?>" class="btn btn-primary">View Course</a>
                         </div>
                     </div>
                 <?php endforeach; ?>
             </div>
-        <?php endif; ?>
+
+            <?php if ($total_pages > 1): ?>
+                <div class="pagination">
+                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                        <a href="?page=<?php echo $i; ?>" 
+                           class="<?php echo $page === $i ? 'active' : ''; ?>">
+                            <?php echo $i; ?>
+                        </a>
+                    <?php endfor; ?>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 
     <?php require_once '../includes/footer.php'; ?>
 
-    <style>
-    .courses-container {
-        max-width: 1200px;
-        margin: 2rem auto;
-        padding: 0 1rem;
-    }
-
-    .courses-header {
-        margin-bottom: 2rem;
-    }
-
-    .search-form {
-        margin-top: 1rem;
-    }
-
-    .search-group {
-        display: flex;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-
-    .search-group input,
-    .search-group select {
-        flex: 1;
-        min-width: 200px;
-    }
-
-    .courses-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 2rem;
-    }
-
-    .course-card {
-        background: #fff;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        transition: transform 0.2s;
-    }
-
-    .course-card:hover {
-        transform: translateY(-5px);
-    }
-
-    .course-image {
-        height: 200px;
-        overflow: hidden;
-    }
-
-    .course-image img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .course-image-placeholder {
-        width: 100%;
-        height: 100%;
-        background-color: #e9ecef;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 3rem;
-        color: #adb5bd;
-    }
-
-    .course-content {
-        padding: 1.5rem;
-    }
-
-    .course-content h3 {
-        margin: 0 0 1rem;
-        font-size: 1.2rem;
-    }
-
-    .course-meta {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 1rem;
-        font-size: 0.9rem;
-        color: #6c757d;
-    }
-
-    .instructor {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .instructor-picture {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        object-fit: cover;
-    }
-
-    .category {
-        background-color: #e9ecef;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-    }
-
-    .course-description {
-        color: #6c757d;
-        margin-bottom: 1rem;
-        line-height: 1.5;
-    }
-
-    .course-stats {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 1rem;
-        font-size: 0.9rem;
-        color: #6c757d;
-    }
-
-    .course-stats span {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .course-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .course-price {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #2c3e50;
-    }
-
-    @media (max-width: 768px) {
-        .search-group {
-            flex-direction: column;
-        }
-
-        .search-group input,
-        .search-group select,
-        .search-group button {
-            width: 100%;
-        }
-
-        .courses-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 
