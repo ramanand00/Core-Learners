@@ -1,0 +1,27 @@
+RewriteEngine On
+RewriteBase /Core-Learners/
+
+# Handle direct file access
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redirect all requests to index.php
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Allow access to assets
+<FilesMatch "\.(css|js|jpg|jpeg|png|gif|ico|pdf|mp4|webm)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# PHP settings
+php_value upload_max_filesize 64M
+php_value post_max_size 64M
+php_value max_execution_time 300
+php_value max_input_time 300
+
+# Prevent directory listing
+Options -Indexes
+
+# Set default character set
+AddDefaultCharset UTF-8 
