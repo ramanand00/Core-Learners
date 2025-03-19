@@ -1,22 +1,4 @@
-:root {
-    --primary-color: #4a90e2;
-    --secondary-color: #2c3e50;
-    --background-color: #ffffff;
-    --text-color: #333333;
-    --border-color: #e1e1e1;
-    --hover-color: #f5f5f5;
-}
-
-/* Dark mode variables */
-[data-theme="dark"] {
-    --primary-color: #64b5f6;
-    --secondary-color: #34495e;
-    --background-color: #1a1a1a;
-    --text-color: #ffffff;
-    --border-color: #404040;
-    --hover-color: #2d2d2d;
-}
-
+/* Reset and Base Styles */
 * {
     margin: 0;
     padding: 0;
@@ -25,24 +7,31 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--background-color);
-    color: var(--text-color);
     line-height: 1.6;
+    background-color: #f0f2f5;
+    color: #1a1a1a;
 }
 
-/* Navbar Styles */
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Navigation */
 .navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 2rem;
-    background-color: var(--background-color);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 10px 20px;
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .nav-left .logo img {
@@ -52,22 +41,30 @@ body {
 .nav-middle .nav-links {
     display: flex;
     list-style: none;
-    gap: 2rem;
+    gap: 20px;
 }
 
 .nav-links a {
     text-decoration: none;
-    color: var(--text-color);
+    color: #1a1a1a;
     font-weight: 500;
-    transition: color 0.3s ease;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: background-color 0.3s;
 }
 
 .nav-links a:hover {
-    color: var(--primary-color);
+    background-color: #f0f2f5;
 }
 
-.nav-right .profile-dropdown {
+.nav-links i {
+    margin-right: 8px;
+}
+
+/* Profile Dropdown */
+.profile-dropdown {
     position: relative;
+    display: inline-block;
 }
 
 .profile-link img {
@@ -81,11 +78,11 @@ body {
     display: none;
     position: absolute;
     right: 0;
-    background-color: var(--background-color);
+    background-color: #ffffff;
     min-width: 160px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-    z-index: 1;
-    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    z-index: 1001;
 }
 
 .profile-dropdown:hover .dropdown-content {
@@ -93,97 +90,167 @@ body {
 }
 
 .dropdown-content a {
-    color: var(--text-color);
+    color: #1a1a1a;
     padding: 12px 16px;
     text-decoration: none;
     display: block;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s;
 }
 
 .dropdown-content a:hover {
-    background-color: var(--hover-color);
+    background-color: #f0f2f5;
 }
 
-/* Container */
-.container {
-    max-width: 1200px;
-    margin: 80px auto 0;
-    padding: 2rem;
+/* Main Content */
+.home-container {
+    margin-top: 80px;
+    padding: 20px;
 }
 
-/* Footer */
-.footer {
-    background-color: var(--background-color);
-    padding: 1rem;
-    text-align: center;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    border-top: 1px solid var(--border-color);
+/* Cards */
+.card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 20px;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .nav-middle .nav-links {
-        display: none;
-    }
-    
-    .navbar {
-        padding: 1rem;
-    }
-    
-    .container {
-        padding: 1rem;
-    }
-}
-
-/* Form Styles */
-.form-group {
-    margin-bottom: 1rem;
-}
-
-.form-control {
+/* Create Post */
+.create-post textarea {
     width: 100%;
-    padding: 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background-color: var(--background-color);
-    color: var(--text-color);
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    resize: vertical;
+    margin-bottom: 12px;
 }
 
-.btn {
-    padding: 0.5rem 1rem;
+.file-upload {
+    margin-bottom: 12px;
+}
+
+/* Posts */
+.post {
+    margin-bottom: 20px;
+}
+
+.post-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.post-header img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 12px;
+}
+
+.post-info h3 {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.post-date {
+    font-size: 12px;
+    color: #666;
+}
+
+.post-content {
+    margin-bottom: 12px;
+}
+
+.post-file {
+    margin: 12px 0;
+}
+
+.post-image {
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+.post-video {
+    width: 100%;
+    border-radius: 8px;
+}
+
+.pdf-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background-color: #f0f2f5;
+    border-radius: 8px;
+}
+
+.post-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.btn-like, .btn-comment {
+    background: none;
     border: none;
-    border-radius: 4px;
+    color: #666;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: background-color 0.3s;
+}
+
+.btn-like:hover, .btn-comment:hover {
+    background-color: #f0f2f5;
+}
+
+/* Buttons */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 500;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s;
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background-color: #1877f2;
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: #357abd;
+    background-color: #166fe5;
 }
 
-/* Card Styles */
-.card {
-    background-color: var(--background-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.btn-secondary {
+    background-color: #e4e6eb;
+    color: #1a1a1a;
 }
 
-/* Grid Layout */
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1rem;
-    margin-top: 2rem;
+.btn-secondary:hover {
+    background-color: #d8dadf;
+}
+
+/* Loading Trigger */
+.loading-trigger {
+    height: 20px;
+    margin: 20px 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .nav-middle {
+        display: none;
+    }
+    
+    .container {
+        padding: 10px;
+    }
+    
+    .home-container {
+        margin-top: 60px;
+    }
 } 

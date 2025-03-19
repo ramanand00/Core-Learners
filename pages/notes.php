@@ -4,54 +4,50 @@ require_once '../config/database.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+    header('Location: /Core-Learners/pages/login.php');
     exit();
 }
 
-// Get user's notes
-$stmt = $conn->prepare("
-    SELECT n.*, u.username, u.profile_picture,
-           (SELECT COUNT(*) FROM note_likes WHERE note_id = n.id) as likes_count,
-           (SELECT COUNT(*) FROM note_comments WHERE note_id = n.id) as comments_count
-    FROM notes n
-    JOIN users u ON n.user_id = u.id
-    WHERE n.user_id = ?
-    ORDER BY n.created_at DESC
-");
-$stmt->execute([$_SESSION['user_id']]);
-$my_notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$user_id = $_SESSION['user_id'];
 
-// Get recommended notes
-$stmt = $conn->prepare("
-    SELECT n.*, u.username, u.profile_picture,
-           (SELECT COUNT(*) FROM note_likes WHERE note_id = n.id) as likes_count,
-           (SELECT COUNT(*) FROM note_comments WHERE note_id = n.id) as comments_count
-    FROM notes n
-    JOIN users u ON n.user_id = u.id
-    WHERE n.user_id != ?
-    AND n.id NOT IN (
-        SELECT note_id FROM note_views WHERE user_id = ?
-    )
-    ORDER BY likes_count DESC
-    LIMIT 10
-");
-$stmt->execute([$_SESSION['user_id'], $_SESSION['user_id']]);
-$recommended_notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Handle note creation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_note'])) {
+    $title = trim($_POST['title']);
+    $content = trim($_POST['content']);
+    $tags = trim($_POST['tags']);
 
-// Get recently viewed notes
-$stmt = $conn->prepare("
-    SELECT n.*, u.username, u.profile_picture,
-           (SELECT COUNT(*) FROM note_likes WHERE note_id = n.id) as likes_count,
-           (SELECT COUNT(*) FROM note_comments WHERE note_id = n.id) as comments_count
-    FROM notes n
-    JOIN users u ON n.user_id = u.id
-    JOIN note_views nv ON n.id = nv.note_id
-    WHERE nv.user_id = ?
-    ORDER BY nv.viewed_at DESC
-    LIMIT 5
-");
-$stmt->execute([$_SESSION['user_id']]);
-$recently_viewed = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!empty($title) && !empty($content)) {
+        try {
+            $stmt = $conn->prepare("INSERT INTO notes (user_id, title, content, tags) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$user_id, $title, $content, $tags]);
+            $_SESSION['success'] = "Note created successfully!";
+        } catch (PDOException $e) {
+            $_SESSION['error'] = "Error creating note: " . $e->getMessage();
+        }
+    }
+}
+
+// Get user's notes with view count
+try {
+    $stmt = $conn->prepare("
+        SELECT n.*, 
+               COUNT(DISTINCT nv.id) as view_count,
+               COUNT(DISTINCT nl.id) as like_count,
+               COUNT(DISTINCT nc.id) as comment_count
+        FROM notes n
+        LEFT JOIN note_views nv ON n.id = nv.note_id
+        LEFT JOIN note_likes nl ON n.id = nl.note_id
+        LEFT JOIN note_comments nc ON n.id = nc.note_id
+        WHERE n.user_id = ?
+        GROUP BY n.id
+        ORDER BY n.created_at DESC
+    ");
+    $stmt->execute([$user_id]);
+    $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $_SESSION['error'] = "Error fetching notes: " . $e->getMessage();
+    $notes = [];
+}
 ?>
 
 <!DOCTYPE html>
@@ -68,196 +64,226 @@ $recently_viewed = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php require_once '../includes/header.php'; ?>
 
     <div class="notes-container">
-        <!-- Create Note Section -->
-        <div class="card">
-            <h2>Create Note</h2>
-            <form action="../includes/create_note.php" method="POST" class="note-form">
+        <!-- Create Note Form -->
+        <div class="card create-note">
+            <h2>Create New Note</h2>
+            <form action="" method="POST" class="note-form">
                 <div class="form-group">
                     <label for="title">Title</label>
                     <input type="text" id="title" name="title" class="form-control" required>
                 </div>
                 <div class="form-group">
                     <label for="content">Content</label>
-                    <div id="editor"></div>
-                    <input type="hidden" name="content" id="content">
+                    <textarea id="content" name="content" class="form-control" rows="5" required></textarea>
                 </div>
                 <div class="form-group">
                     <label for="tags">Tags (comma-separated)</label>
-                    <input type="text" id="tags" name="tags" class="form-control" placeholder="e.g., programming, math, science">
+                    <input type="text" id="tags" name="tags" class="form-control" placeholder="e.g., programming, web, php">
                 </div>
-                <button type="submit" class="btn btn-primary">Create Note</button>
+                <button type="submit" name="create_note" class="btn btn-primary">Create Note</button>
             </form>
         </div>
 
-        <!-- My Notes Section -->
-        <div class="card">
-            <h2>My Notes</h2>
-            <?php if (empty($my_notes)): ?>
-                <div class="no-notes">
-                    <i class="fas fa-sticky-note"></i>
-                    <p>You haven't created any notes yet</p>
+        <!-- Notes List -->
+        <div class="notes-list">
+            <?php if (empty($notes)): ?>
+                <div class="card">
+                    <p class="text-center">No notes yet. Create your first note!</p>
                 </div>
             <?php else: ?>
-                <div class="notes-grid">
-                    <?php foreach ($my_notes as $note): ?>
-                        <div class="note-card">
-                            <div class="note-header">
-                                <h3><?php echo htmlspecialchars($note['title']); ?></h3>
-                                <div class="note-meta">
-                                    <span><i class="fas fa-calendar"></i> <?php echo date('M d, Y', strtotime($note['created_at'])); ?></span>
-                                    <span><i class="fas fa-eye"></i> <?php echo $note['views_count']; ?></span>
-                                    <span><i class="fas fa-heart"></i> <?php echo $note['likes_count']; ?></span>
-                                    <span><i class="fas fa-comment"></i> <?php echo $note['comments_count']; ?></span>
-                                </div>
+                <?php foreach ($notes as $note): ?>
+                    <div class="card note-card">
+                        <div class="note-header">
+                            <h3><?php echo htmlspecialchars($note['title']); ?></h3>
+                            <div class="note-meta">
+                                <span class="note-date"><?php echo date('M d, Y', strtotime($note['created_at'])); ?></span>
+                                <span class="note-stats">
+                                    <i class="fas fa-eye"></i> <?php echo $note['view_count']; ?>
+                                    <i class="fas fa-heart"></i> <?php echo $note['like_count']; ?>
+                                    <i class="fas fa-comment"></i> <?php echo $note['comment_count']; ?>
+                                </span>
                             </div>
-                            <div class="note-preview">
-                                <?php echo substr(strip_tags($note['content']), 0, 200) . '...'; ?>
-                            </div>
+                        </div>
+                        <div class="note-content">
+                            <?php echo nl2br(htmlspecialchars($note['content'])); ?>
+                        </div>
+                        <?php if (!empty($note['tags'])): ?>
                             <div class="note-tags">
                                 <?php foreach (explode(',', $note['tags']) as $tag): ?>
                                     <span class="tag"><?php echo htmlspecialchars(trim($tag)); ?></span>
                                 <?php endforeach; ?>
                             </div>
-                            <div class="note-actions">
-                                <a href="note-view.php?id=<?php echo $note['id']; ?>" class="btn btn-primary">View</a>
-                                <button class="btn btn-secondary edit-note" data-note-id="<?php echo $note['id']; ?>">Edit</button>
-                                <button class="btn btn-danger delete-note" data-note-id="<?php echo $note['id']; ?>">Delete</button>
-                            </div>
+                        <?php endif; ?>
+                        <div class="note-actions">
+                            <button class="btn btn-sm btn-primary view-note" data-note-id="<?php echo $note['id']; ?>">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button class="btn btn-sm btn-secondary edit-note" data-note-id="<?php echo $note['id']; ?>">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-danger delete-note" data-note-id="<?php echo $note['id']; ?>">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
                         </div>
-                    <?php endforeach; ?>
-                </div>
+                    </div>
+                <?php endforeach; ?>
             <?php endif; ?>
         </div>
-
-        <!-- Recently Viewed Notes -->
-        <?php if (!empty($recently_viewed)): ?>
-            <div class="card">
-                <h2>Recently Viewed</h2>
-                <div class="notes-grid">
-                    <?php foreach ($recently_viewed as $note): ?>
-                        <div class="note-card">
-                            <div class="note-header">
-                                <h3><?php echo htmlspecialchars($note['title']); ?></h3>
-                                <div class="note-meta">
-                                    <span>By <?php echo htmlspecialchars($note['username']); ?></span>
-                                    <span><i class="fas fa-calendar"></i> <?php echo date('M d, Y', strtotime($note['created_at'])); ?></span>
-                                    <span><i class="fas fa-eye"></i> <?php echo $note['views_count']; ?></span>
-                                    <span><i class="fas fa-heart"></i> <?php echo $note['likes_count']; ?></span>
-                                    <span><i class="fas fa-comment"></i> <?php echo $note['comments_count']; ?></span>
-                                </div>
-                            </div>
-                            <div class="note-preview">
-                                <?php echo substr(strip_tags($note['content']), 0, 200) . '...'; ?>
-                            </div>
-                            <div class="note-tags">
-                                <?php foreach (explode(',', $note['tags']) as $tag): ?>
-                                    <span class="tag"><?php echo htmlspecialchars(trim($tag)); ?></span>
-                                <?php endforeach; ?>
-                            </div>
-                            <a href="note-view.php?id=<?php echo $note['id']; ?>" class="btn btn-primary">View Again</a>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        <?php endif; ?>
-
-        <!-- Recommended Notes -->
-        <?php if (!empty($recommended_notes)): ?>
-            <div class="card">
-                <h2>Recommended Notes</h2>
-                <div class="notes-grid">
-                    <?php foreach ($recommended_notes as $note): ?>
-                        <div class="note-card">
-                            <div class="note-header">
-                                <h3><?php echo htmlspecialchars($note['title']); ?></h3>
-                                <div class="note-meta">
-                                    <span>By <?php echo htmlspecialchars($note['username']); ?></span>
-                                    <span><i class="fas fa-calendar"></i> <?php echo date('M d, Y', strtotime($note['created_at'])); ?></span>
-                                    <span><i class="fas fa-eye"></i> <?php echo $note['views_count']; ?></span>
-                                    <span><i class="fas fa-heart"></i> <?php echo $note['likes_count']; ?></span>
-                                    <span><i class="fas fa-comment"></i> <?php echo $note['comments_count']; ?></span>
-                                </div>
-                            </div>
-                            <div class="note-preview">
-                                <?php echo substr(strip_tags($note['content']), 0, 200) . '...'; ?>
-                            </div>
-                            <div class="note-tags">
-                                <?php foreach (explode(',', $note['tags']) as $tag): ?>
-                                    <span class="tag"><?php echo htmlspecialchars(trim($tag)); ?></span>
-                                <?php endforeach; ?>
-                            </div>
-                            <a href="note-view.php?id=<?php echo $note['id']; ?>" class="btn btn-primary">View</a>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        <?php endif; ?>
     </div>
 
-    <?php require_once '../includes/footer.php'; ?>
+    <!-- Note View Modal -->
+    <div id="noteModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="noteModalContent"></div>
+        </div>
+    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quill/2.0.0-dev.3/quill.min.js"></script>
+    <!-- Note Edit Modal -->
+    <div id="editNoteModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit Note</h2>
+            <form id="editNoteForm" method="POST">
+                <input type="hidden" id="editNoteId" name="note_id">
+                <div class="form-group">
+                    <label for="editTitle">Title</label>
+                    <input type="text" id="editTitle" name="title" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="editContent">Content</label>
+                    <textarea id="editContent" name="content" class="form-control" rows="5" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="editTags">Tags (comma-separated)</label>
+                    <input type="text" id="editTags" name="tags" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
     <script>
-        // Initialize Quill editor
-        var quill = new Quill('#editor', {
-            theme: 'snow',
-            modules: {
-                toolbar: [
-                    ['bold', 'italic', 'underline', 'strike'],
-                    ['blockquote', 'code-block'],
-                    [{ 'header': 1 }, { 'header': 2 }],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'script': 'sub'}, { 'script': 'super' }],
-                    [{ 'indent': '-1'}, { 'indent': '+1' }],
-                    [{ 'direction': 'rtl' }],
-                    [{ 'size': ['small', false, 'large', 'huge'] }],
-                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'font': [] }],
-                    [{ 'align': [] }],
-                    ['clean']
-                ]
+    document.addEventListener('DOMContentLoaded', function() {
+        // Modal functionality
+        const modals = document.querySelectorAll('.modal');
+        const closeButtons = document.querySelectorAll('.close');
+
+        function openModal(modal) {
+            modal.style.display = 'block';
+        }
+
+        function closeModal(modal) {
+            modal.style.display = 'none';
+        }
+
+        closeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const modal = this.closest('.modal');
+                closeModal(modal);
+            });
+        });
+
+        window.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                closeModal(event.target);
             }
         });
 
-        // Update hidden input before form submission
-        document.querySelector('.note-form').addEventListener('submit', function() {
-            document.getElementById('content').value = quill.root.innerHTML;
+        // View note
+        document.querySelectorAll('.view-note').forEach(button => {
+            button.addEventListener('click', async function() {
+                const noteId = this.dataset.noteId;
+                try {
+                    const response = await fetch(`/Core-Learners/includes/get_note.php?id=${noteId}`);
+                    const data = await response.json();
+                    if (data.success) {
+                        const note = data.note;
+                        document.getElementById('noteModalContent').innerHTML = `
+                            <h2>${note.title}</h2>
+                            <div class="note-meta">
+                                <span class="note-date">${note.created_at}</span>
+                            </div>
+                            <div class="note-content">${note.content}</div>
+                            ${note.tags ? `
+                                <div class="note-tags">
+                                    ${note.tags.split(',').map(tag => `<span class="tag">${tag.trim()}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                        `;
+                        openModal(document.getElementById('noteModal'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
         });
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // Handle note deletion
-            document.querySelectorAll('.delete-note').forEach(button => {
-                button.addEventListener('click', function() {
-                    if (confirm('Are you sure you want to delete this note?')) {
-                        const noteId = this.dataset.noteId;
-                        fetch('../includes/delete_note.php', {
+        // Edit note
+        document.querySelectorAll('.edit-note').forEach(button => {
+            button.addEventListener('click', async function() {
+                const noteId = this.dataset.noteId;
+                try {
+                    const response = await fetch(`/Core-Learners/includes/get_note.php?id=${noteId}`);
+                    const data = await response.json();
+                    if (data.success) {
+                        const note = data.note;
+                        document.getElementById('editNoteId').value = note.id;
+                        document.getElementById('editTitle').value = note.title;
+                        document.getElementById('editContent').value = note.content;
+                        document.getElementById('editTags').value = note.tags || '';
+                        openModal(document.getElementById('editNoteModal'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+        });
+
+        // Delete note
+        document.querySelectorAll('.delete-note').forEach(button => {
+            button.addEventListener('click', async function() {
+                if (confirm('Are you sure you want to delete this note?')) {
+                    const noteId = this.dataset.noteId;
+                    try {
+                        const response = await fetch('/Core-Learners/includes/delete_note.php', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                             },
-                            body: JSON.stringify({
-                                note_id: noteId
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                this.closest('.note-card').remove();
-                            }
+                            body: JSON.stringify({ note_id: noteId })
                         });
+                        const data = await response.json();
+                        if (data.success) {
+                            this.closest('.note-card').remove();
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
                     }
-                });
-            });
-
-            // Handle note editing
-            document.querySelectorAll('.edit-note').forEach(button => {
-                button.addEventListener('click', function() {
-                    const noteId = this.dataset.noteId;
-                    window.location.href = `edit-note.php?id=${noteId}`;
-                });
+                }
             });
         });
+
+        // Handle edit form submission
+        document.getElementById('editNoteForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            try {
+                const response = await fetch('/Core-Learners/includes/update_note.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+    });
     </script>
+
+    <?php require_once '../includes/footer.php'; ?>
 </body>
 </html> 

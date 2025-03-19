@@ -69,10 +69,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Get user's posts
 $stmt = $conn->prepare("
     SELECT p.*, 
-           (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
-           (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comments_count
-    FROM posts p 
-    WHERE p.user_id = ? 
+           COUNT(DISTINCT pl.id) as like_count,
+           COUNT(DISTINCT pc.id) as comment_count
+    FROM posts p
+    LEFT JOIN post_likes pl ON p.id = pl.post_id
+    LEFT JOIN post_comments pc ON p.id = pc.post_id
+    WHERE p.user_id = ?
+    GROUP BY p.id
     ORDER BY p.created_at DESC
 ");
 $stmt->execute([$_SESSION['user_id']]);
@@ -183,8 +186,8 @@ $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </div>
                             <?php endif; ?>
                             <div class="post-actions">
-                                <span><i class="fas fa-heart"></i> <?php echo $post['likes_count']; ?></span>
-                                <span><i class="fas fa-comment"></i> <?php echo $post['comments_count']; ?></span>
+                                <span><i class="fas fa-heart"></i> <?php echo $post['like_count']; ?></span>
+                                <span><i class="fas fa-comment"></i> <?php echo $post['comment_count']; ?></span>
                             </div>
                         </div>
                     <?php endforeach; ?>
